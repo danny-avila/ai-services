@@ -1,11 +1,20 @@
 # main.py
 import openai
+from logger import logger
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from routes.ai_utilities import ai_utilities_router
 from middlewares.authentication import AuthenticationMiddleware
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    yield
+    logger.info("Shutting down...")
+    logger.info("Closing OpenAI AIO session...")
+    await openai.aiosession.get().close()
+
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(ai_utilities_router, prefix="/ai")
 
@@ -17,10 +26,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await openai.aiosession.get().close()
 
 if __name__ == "__main__":
     import uvicorn
