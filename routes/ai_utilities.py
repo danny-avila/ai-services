@@ -25,9 +25,9 @@ async def ask(payload: RequestPayload, token: str = Depends(authenticate)):
     envs = payload.envs
 
     if service == "q&a":
-        result = ask_question(input_text, envs)
+        result = await ask_question(input_text, envs)
     elif service == "sentiment_analysis":
-        result = sentiment_analysis(input_text, envs)
+        result = await sentiment_analysis(input_text, envs)
     else:
         raise HTTPException(status_code=400, detail="Invalid service requested")
 
@@ -40,7 +40,7 @@ async def ask(payload: RequestPayload, token: str = Depends(authenticate)):
 async def sentiment_analysis_route(payload: RequestPayload, token: str = Depends(authenticate)):
     input_text = payload.input
     envs = payload.envs
-    result = sentiment_analysis(input_text, envs)
+    result = await sentiment_analysis(input_text, envs)
 
     result_dict = json.loads(result)
     if 'error' in result_dict:

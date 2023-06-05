@@ -1,4 +1,5 @@
 # main.py
+import openai
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.ai_utilities import ai_utilities_router
@@ -16,6 +17,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await openai.aiosession.get().close()
 
 if __name__ == "__main__":
     import uvicorn
