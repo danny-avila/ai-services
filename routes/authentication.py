@@ -3,12 +3,12 @@ from pydantic import BaseModel
 from typing import Optional
 from middlewares.authentication import authenticate
 
-router = APIRouter()
+authentication_router = APIRouter()
 
 class AuthRequest(BaseModel):
     secret_key: str
 
-@router.post("/authenticate")
+@authentication_router.post("/authenticate")
 async def auth_endpoint(auth_request: AuthRequest) -> dict:
     secret_key = auth_request.secret_key
     is_authenticated = authenticate(secret_key)

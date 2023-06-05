@@ -1,1 +1,1 @@
-from .ai_services import ask, sentiment_analysis
+from .ai_services import ask_question, sentiment_analysis

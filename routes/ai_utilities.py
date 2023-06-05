@@ -1,10 +1,12 @@
+# routes\ai_utilities.py
+import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Dict
-from services.ai_services import ask_question, analyze_sentiment
+from services.ai_services import ask_question, sentiment_analysis
 from middlewares.authentication import authenticate
 
-router = APIRouter()
+ai_utilities_router = APIRouter()
 
 class RequestPayload(BaseModel):
     service: str
@@ -16,32 +18,32 @@ class ApiResponse(BaseModel):
     error: str
     stdout: str
 
-@router.post("/ask", response_model=ApiResponse)
+@ai_utilities_router.post("/ask", response_model=ApiResponse)
 async def ask(payload: RequestPayload, token: str = Depends(authenticate)):
-    try:
-        service = payload.service.lower()
-        input_text = payload.input
-        envs = payload.envs
+    service = payload.service.lower()
+    input_text = payload.input
+    envs = payload.envs
 
-        if service == "q&a":
-            result, stdout = await ask_question(input_text, envs)
-        elif service == "sentiment_analysis":
-            result, stdout = await analyze_sentiment(input_text, envs)
-        else:
-            raise ValueError("Invalid service requested")
+    if service == "q&a":
+        result = ask_question(input_text, envs)
+    elif service == "sentiment_analysis":
+        result = sentiment_analysis(input_text, envs)
+    else:
+        raise HTTPException(status_code=400, detail="Invalid service requested")
 
-        return ApiResponse(result=result, error="", stdout=stdout)
+    if 'error' in result:
+        raise HTTPException(status_code=400, detail=result['error'])
 
-    except Exception as e:
-        return ApiResponse(result="", error=str(e), stdout="")
+    return ApiResponse(result=result, error="", stdout="")
 
-@router.post("/sentiment_analysis", response_model=ApiResponse)
-async def sentiment_analysis(payload: RequestPayload, token: str = Depends(authenticate)):
-    try:
-        input_text = payload.input
-        envs = payload.envs
-        result, stdout = await analyze_sentiment(input_text, envs)
-        return ApiResponse(result=result, error="", stdout=stdout)
+@ai_utilities_router.post("/sentiment_analysis", response_model=ApiResponse)
+async def sentiment_analysis_route(payload: RequestPayload, token: str = Depends(authenticate)):
+    input_text = payload.input
+    envs = payload.envs
+    result = sentiment_analysis(input_text, envs)
 
-    except Exception as e:
-        return ApiResponse(result="", error=str(e), stdout="")
+    result_dict = json.loads(result)
+    if 'error' in result_dict:
+        raise HTTPException(status_code=400, detail=result_dict['error'])
+
+    return ApiResponse(result=result, error="", stdout="")

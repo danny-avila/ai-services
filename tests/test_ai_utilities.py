@@ -1,7 +1,11 @@
+# tests\test_ai_utilities.py
 import pytest
 from fastapi.testclient import TestClient
 from main import app
 from services.ai_services import AI_SERVICES
+
+SECRET_KEY = "your-secret-key"
+headers = {"x-api-key": SECRET_KEY}
 
 client = TestClient(app)
 
@@ -13,7 +17,7 @@ def test_ask():
             "OPENAI_API_KEY": "test_key",
         }
     }
-    response = client.post("/ask", json=test_data)
+    response = client.post("/ai/ask", headers=headers, json=test_data)
     assert response.status_code == 200
     assert "result" in response.json()
     assert "error" in response.json()
@@ -27,18 +31,19 @@ def test_ask_invalid_service():
             "OPENAI_API_KEY": "test_key",
         }
     }
-    response = client.post("/ask", json=test_data)
+    response = client.post("/ai/ask", headers=headers, json=test_data)
     assert response.status_code == 400
     assert "detail" in response.json()
 
 def test_sentiment_analysis():
     test_data = {
-        "text": "I love this product!",
+        "service": "sentiment_analysis",
+        "input": "I love this product!",
         "envs": {
             "OPENAI_API_KEY": "test_key",
         }
     }
-    response = client.post("/sentiment_analysis", json=test_data)
+    response = client.post("/ai/ask", headers=headers, json=test_data)
     assert response.status_code == 200
     assert "result" in response.json()
     assert "error" in response.json()
@@ -51,7 +56,7 @@ def test_sentiment_analysis_invalid_input():
             "OPENAI_API_KEY": "test_key",
         }
     }
-    response = client.post("/sentiment_analysis", json=test_data)
+    response = client.post("/ai/sentiment_analysis", headers=headers, json=test_data)
     assert response.status_code == 422
     assert "detail" in response.json()
 
@@ -64,7 +69,7 @@ def test_ai_services(service_name):
             "OPENAI_API_KEY": "test_key",
         }
     }
-    response = client.post("/ask", json=test_data)
+    response = client.post("/ai/ask", headers=headers, json=test_data)
     assert response.status_code == 200
     assert "result" in response.json()
     assert "error" in response.json()

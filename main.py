@@ -1,13 +1,12 @@
+# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes.ai_utilities import ai_utilities_router
-from routes.authentication import authentication_router
 from middlewares.authentication import AuthenticationMiddleware
 
 app = FastAPI()
 
 app.include_router(ai_utilities_router, prefix="/ai")
-app.include_router(authentication_router, prefix="/auth")
 
 app.add_middleware(AuthenticationMiddleware)
 app.add_middleware(

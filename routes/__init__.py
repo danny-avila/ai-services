@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from .ai_utilities import router as ai_utilities_router
-from .authentication import router as authentication_router
+from .ai_utilities import ai_utilities_router
+from .authentication import authentication_router
 
 router = APIRouter()
 
