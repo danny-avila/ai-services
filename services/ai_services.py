@@ -4,11 +4,8 @@ import openai
 from typing import Dict
 from logger import logger
 from aiohttp import ClientSession
-# from tree_of_thoughts import OpenAILanguageModel
-# from tree_of_thoughts import MonteCarloTreeofThoughts
 from .utils.handle_exception import handle_exception
-from clients.AsyncOpenAIToT import AsyncOpenAILanguageModel
-from clients.AsyncMonteCarloToT import AsyncMonteCarloTreeofThoughts
+from clients.tree_of_thoughts import AsyncOpenAILanguageModel, AsyncMonteCarloTreeofThoughts
 
 openai.aiosession.set(ClientSession())
 
@@ -67,7 +64,6 @@ async def tree_of_thoughts(input_text: str, envs: Dict[str, str]) -> str:
         # sleep_time=sleep_time
         )
 
-        await model.close_session()
         logger.debug("tree_of_thoughts: %s", solution)
         return f"Solution: {solution}"
     except Exception as e:
