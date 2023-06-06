@@ -1,4 +1,4 @@
-
+# clients\tree_of_thoughts\AsyncMonteCarlo.py
 from typing import Any, Dict, Union
 import os
 import asyncio
@@ -20,9 +20,12 @@ class TreeofThoughts:
         self.history = []  # added line initalize history
 
     def save_tree_to_json(self, file_name):
-        os.makedirs(os.path.dirname(file_name), exist_ok=True)
-        with open(file_name, 'w') as json_file:
-            json.dump(self.tree, json_file, indent=4)
+        if self.stream_handler:
+            self.stream_handler(json.dumps(self.tree, indent=4))
+        else: 
+            os.makedirs(os.path.dirname(file_name), exist_ok=True)
+            with open(file_name, 'w') as json_file:
+                json.dump(self.tree, json_file, indent=4)
 
     def logNewState(self, state, evaluation):
         if not (type(state) == str):
@@ -46,8 +49,9 @@ class TreeofThoughts:
             return max(np.mean(values[-window_size:]), 0.1)
 
 class AsyncMonteCarloTreeofThoughts(TreeofThoughts):
-    def __init__(self, model, objective="balance"):
+    def __init__(self, model, objective="balance", stream_handler=None):
         super().__init__(model)
+        self.stream_handler = stream_handler
         self.objective = objective
         self.solution_found = False
         self.tree: Dict[str, Dict[str, Union[float, Dict[str, Any]]]] = {

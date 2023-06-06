@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Optional
 from middlewares.authentication import authenticate
 
 authentication_router = APIRouter()

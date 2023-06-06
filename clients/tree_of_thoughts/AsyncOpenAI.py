@@ -1,3 +1,4 @@
+# clients\tree_of_thoughts\AsyncOpenAI.py
 import os
 import openai
 import logging
@@ -10,8 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 class AsyncOpenAILanguageModel(AbstractLanguageModel):
-    def __init__(self, api_key, strategy="cot", evaluation_strategy="value", api_base="", api_model="", enable_ReAct_prompting=True):
+    def __init__(self, api_key, strategy="cot", evaluation_strategy="value", api_base="", api_model="", enable_ReAct_prompting=True, stream_handler=None):
         self.session = openai.aiosession.get()
+        self.stream_handler = stream_handler
         if api_key == "" or api_key == None:
             api_key = os.environ.get("OPENAI_API_KEY", "")
         if api_key != "":
@@ -70,9 +72,12 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
                         stop=stop,
                         temperature=temperature,
                     )
-                with open("openai.logs", 'a') as log_file:
-                    log_file.write("\n" + "-----------" +
-                                   '\n' + "Prompt : " + prompt+"\n")
+                # with open("openai.logs", 'a') as log_file:
+                #     log_file.write("\n" + "-----------" +
+                #                    '\n' + "Prompt : " + prompt+"\n")
+
+                if self.stream_handler:
+                    self.stream_handler(f"\n-----------\nPrompt: {prompt}")
                 return response
             except openai.error.RateLimitError as e:
                 sleep_duration = os.environ.get("OPENAI_RATE_TIMEOUT", 30)
@@ -94,6 +99,8 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
                 response = await self.openai_api_call_handler(prompt, 400, 0.5, k)
                 text = self.openai_choice2text_handler(response.choices[0])
                 thoughts += [text]
+                if self.stream_handler:
+                    self.stream_handler(f"\n-----------\nThoughts: {thoughts}")
                 # print(f'thoughts: {thoughts}')
             return thoughts
 
@@ -110,7 +117,7 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
             state_text = '\n'.join(state)
         print("New state generating thought:", state, "\n\n")
         # prompt = f"Considering the thoughts you've had until now:\n\n{state_text}\n\nDevise the next coherent thought that will aid in advancing the reasoning process and achieving a solution to {initial_prompt}. Assess various scenarios, think unconventionally, anticipate potential challenges, and resolve any outstanding queries. Tap into your mind's full potential and make certain no open questions remain."
-        prompt = f"""You're an TreeofThoughts, an superintelligent AI model devoted to helping Humans by any means necessary. You're purpose is to generate a series of solutions to comply with the user's instructions, you must generate solutions on the basis of determining the most reliable solution in the shortest amount of time, while taking rejected solutions into account and learning from them. 
+        prompt = f"""You are TreeofThoughts, a super-intelligent AI model devoted to helping Humans by any means necessary. Your purpose is to generate a series of solutions to comply with the user's instructions, you must generate solutions on the basis of determining the most reliable solution in the shortest amount of time, while taking rejected solutions into account and learning from them. 
         Considering the reasoning provided:\n\n
         ###'{state_text}'\n\n###
         Devise the best possible solution for the task: {initial_prompt}, Here are evaluated solutions that were rejected: 
@@ -132,14 +139,14 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
             else:
                 state_text = state
 
-            prompt = f"""You're an TreeofThoughts, an superintelligent AI model devoted to helping Humans by any means necessary. You're purpose is to generate a series of solutions to comply with the user's instructions, you must generate solutions on the basis of determining the most reliable solution in the shortest amount of time, while taking rejected solutions into account and learning from them. 
+            prompt = f"""You are TreeofThoughts, a super-intelligent AI model devoted to helping Humans by any means necessary. Your purpose is to generate a series of solutions to comply with the user's instructions, you must generate solutions on the basis of determining the most reliable solution in the shortest amount of time, while taking rejected solutions into account and learning from them. 
             Considering the reasoning provided:\n\n
             ###'{state_text}'\n\n###
             Devise the best possible solution for the task: {initial_prompt}, Here are evaluated solutions that were rejected: 
             ###{rejected_solutions}###, 
             complete the {initial_prompt} without making the same mistakes you did with the evaluated rejected solutions. Be simple. Be direct. Provide intuitive solutions as soon as you think of them."""
             answer = await self.generate_text(prompt, 1)
-            print(f'Answerrrrrr {answer}')
+            print(f'Answer: {answer}')
             # print(thoughts)
             # print(f"General Solution : {answer}")
             return answer
@@ -160,14 +167,12 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
                     state_text = '\n'.join(state)
                 print("We receive a state of type", type(
                     state), "For state: ", state, "\n\n")
-                # prompt = f"Given the current state of reasoning: '{state_text}', evaluate its value as a float between 0 and 1, become very pessimistic think of potential adverse risks on the probability of this state of reasoning achieveing {initial_prompt} and DO NOT RESPOND WITH ANYTHING ELSE: OTHER THAN AN FLOAT"
                 prompt = f""" To achieve the following goal: '{initial_prompt}', pessimistically value the context of the past solutions and more importantly the latest generated solution you had AS A FLOAT BETWEEN 0 AND 1\n
                     Past solutions:\n\n
                     {state_text}\n       
                     If the solutions is not directly concretely making fast progress in achieving the goal, give it a lower score.
                     Evaluate all solutions AS A FLOAT BETWEEN 0 and 1:\n,  DO NOT RETURN ANYTHING ELSE
                 """
-                # and then inside backticks provide an simple and direct bulletpoint list as to why you evaluated this thought the way you did. Provide simple yet intuitive feedback.
 
                 response = await self.openai_api_call_handler(prompt, 10, 1)
                 try:

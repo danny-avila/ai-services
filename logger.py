@@ -11,4 +11,4 @@ c_handler.setFormatter(c_format)
 logger.addHandler(c_handler)
 
 # Set level of logger
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)

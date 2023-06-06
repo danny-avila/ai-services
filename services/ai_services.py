@@ -8,6 +8,8 @@ from .utils.handle_exception import handle_exception
 from clients.tree_of_thoughts import AsyncOpenAILanguageModel, AsyncMonteCarloTreeofThoughts
 
 openai.aiosession.set(ClientSession())
+def logger_stream_handler(message):
+    logger.debug(message)
 
 async def ask_question(input_text: str, envs: Dict[str, str]) -> str:
     try:
@@ -29,10 +31,11 @@ async def ask_question(input_text: str, envs: Dict[str, str]) -> str:
 
 async def tree_of_thoughts(input_text: str, envs: Dict[str, str]) -> str:
     try:
+        logger_stream_handler("Starting tree_of_thoughts service")
         api_model = envs["MODEL"]
         api_key = envs["OPENAI_API_KEY"]
-        model = AsyncOpenAILanguageModel(api_key=api_key, api_model=api_model)
-        tree_of_thoughts = AsyncMonteCarloTreeofThoughts(model)
+        model = AsyncOpenAILanguageModel(api_key=api_key, api_model=api_model, stream_handler=logger_stream_handler)
+        tree_of_thoughts = AsyncMonteCarloTreeofThoughts(model, stream_handler=logger_stream_handler)
         # model = OpenAILanguageModel(api_key=api_key, api_model=api_model)
         # tree_of_thoughts = MonteCarloTreeofThoughts(model)
         # initial_prompt =  """
@@ -49,7 +52,7 @@ async def tree_of_thoughts(input_text: str, envs: Dict[str, str]) -> str:
         # Input: use 4 numbers and basic arithmetic operations (+-*/) to obtain 24 in 1 equation
         # Possible next steps:
         # """
-        initial_prompt =  "design an new transportation system for an all-new city"
+        initial_prompt =  "design a new transportation system for an all-new city"
         num_thoughts = 1
         max_steps = 3
         max_states = 4
@@ -64,7 +67,7 @@ async def tree_of_thoughts(input_text: str, envs: Dict[str, str]) -> str:
         # sleep_time=sleep_time
         )
 
-        logger.debug("tree_of_thoughts: %s", solution)
+        # logger.debug("tree_of_thoughts: %s", solution)
         return f"Solution: {solution}"
     except Exception as e:
         handle_exception(e, "tree_of_thoughts")
