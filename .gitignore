@@ -5,3 +5,5 @@ __pycache__
 .idea
 /.idea/
 .pytest_cache
+/logs/
+openai.logs

@@ -1,11 +1,14 @@
 # services\ai_services.py
-import traceback
-from fastapi import HTTPException
-from logger import logger
-from typing import Dict
 import json
 import openai
+from typing import Dict
+from logger import logger
 from aiohttp import ClientSession
+# from tree_of_thoughts import OpenAILanguageModel
+# from tree_of_thoughts import MonteCarloTreeofThoughts
+from .utils.handle_exception import handle_exception
+from clients.AsyncOpenAIToT import AsyncOpenAILanguageModel
+from clients.AsyncMonteCarloToT import AsyncMonteCarloTreeofThoughts
 
 openai.aiosession.set(ClientSession())
 
@@ -22,14 +25,53 @@ async def ask_question(input_text: str, envs: Dict[str, str]) -> str:
             temperature=0.5,
         )
 
-        logger.info("ask_question: %s", response)
+        logger.debug("ask_question: %s", response)
         return response.choices[0].message.content.strip()
     except Exception as e:
-        logger.error("ask_question Exception: %s", e)
-        logger.error("Exception type: %s", type(e).__name__)
-        logger.error("Traceback: %s", traceback.format_exc())
-        error_message = f"An error of type {type(e).__name__} occurred. Arguments:\n{e.args}"
-        raise HTTPException(status_code=500, detail=error_message)
+        handle_exception(e, "ask_question")
+
+async def tree_of_thoughts(input_text: str, envs: Dict[str, str]) -> str:
+    try:
+        api_model = envs["MODEL"]
+        api_key = envs["OPENAI_API_KEY"]
+        model = AsyncOpenAILanguageModel(api_key=api_key, api_model=api_model)
+        tree_of_thoughts = AsyncMonteCarloTreeofThoughts(model)
+        # model = OpenAILanguageModel(api_key=api_key, api_model=api_model)
+        # tree_of_thoughts = MonteCarloTreeofThoughts(model)
+        # initial_prompt =  """
+        # Input: 2 8 8 14
+        # Possible next steps:
+        # 2 + 8 = 10 (left: 8 10 14)
+        # 8 / 2 = 4 (left: 4 8 14)
+        # 14 + 2 = 16 (left: 8 8 16)
+        # 2 * 8 = 16 (left: 8 14 16)
+        # 8 - 2 = 6 (left: 6 8 14)
+        # 14 - 8 = 6 (left: 2 6 8)
+        # 14 /  2 = 7 (left: 7 8 8)
+        # 14 - 2 = 12 (left: 8 8 12)
+        # Input: use 4 numbers and basic arithmetic operations (+-*/) to obtain 24 in 1 equation
+        # Possible next steps:
+        # """
+        initial_prompt =  "design an new transportation system for an all-new city"
+        num_thoughts = 1
+        max_steps = 3
+        max_states = 4
+        pruning_threshold = 0.5
+
+        solution = await tree_of_thoughts.solve(
+        initial_prompt=initial_prompt,
+        num_thoughts=num_thoughts, 
+        max_steps=max_steps, 
+        max_states=max_states, 
+        pruning_threshold=pruning_threshold,
+        # sleep_time=sleep_time
+        )
+
+        await model.close_session()
+        logger.debug("tree_of_thoughts: %s", solution)
+        return f"Solution: {solution}"
+    except Exception as e:
+        handle_exception(e, "tree_of_thoughts")
 
 async def sentiment_analysis(text: str, api_key: str) -> str:
     try:
@@ -42,26 +84,15 @@ async def sentiment_analysis(text: str, api_key: str) -> str:
             stop=None,
             temperature=0.5,
         )
-        logger.info("sentiment_analysis: %s", response)
+        logger.debug("sentiment_analysis: %s", response)
         sentiment = response.choices[0].text.strip()
         sentiment_dict = {"positive": float(sentiment.split()[0]), "negative": float(sentiment.split()[1])}
         return json.dumps(sentiment_dict)
     except Exception as e:
-        logger.error("sentiment_analysis Exception: %s", e)
-        logger.error("Exception type: %s", type(e).__name__)
-        logger.error("Traceback: %s", traceback.format_exc())
-        error_message = f"An error of type {type(e).__name__} occurred. Arguments:\n{e.args}"
-        raise HTTPException(status_code=500, detail=error_message)
-
-async def execute_ai_service(service: str, input_data: str, envs: Dict[str, str]) -> Dict[str, str]:
-    if service == "q&a":
-        return {"result": await ask_question(input_data, envs["OPENAI_API_KEY"])}
-    elif service == "sentiment_analysis":
-        return {"result": await sentiment_analysis(input_data, envs["OPENAI_API_KEY"])}
-    else:
-        return {"error": "Invalid service specified"}
+        handle_exception(e, "sentiment_analysis")
 
 AI_SERVICES = {
     "q&a": ask_question,
-    "sentiment_analysis": sentiment_analysis
+    "tree_of_thoughts": tree_of_thoughts,
+    "sentiment_analysis": sentiment_analysis,
 }

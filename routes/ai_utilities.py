@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Dict
-from services.ai_services import ask_question, sentiment_analysis
+from services.ai_services import AI_SERVICES
 from middlewares.authentication import authenticate
 
 ai_utilities_router = APIRouter()
@@ -24,26 +24,16 @@ async def ask(payload: RequestPayload, token: str = Depends(authenticate)):
     input_text = payload.input
     envs = payload.envs
 
-    if service == "q&a":
-        result = await ask_question(input_text, envs)
-    elif service == "sentiment_analysis":
-        result = await sentiment_analysis(input_text, envs)
-    else:
+    if service not in AI_SERVICES:
         raise HTTPException(status_code=400, detail="Invalid service requested")
+
+    try:
+        result = await AI_SERVICES[service](input_text, envs)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
     if 'error' in result:
         raise HTTPException(status_code=400, detail=result['error'])
 
     return ApiResponse(result=result, error="", stdout="")
 
-@ai_utilities_router.post("/sentiment_analysis", response_model=ApiResponse)
-async def sentiment_analysis_route(payload: RequestPayload, token: str = Depends(authenticate)):
-    input_text = payload.input
-    envs = payload.envs
-    result = await sentiment_analysis(input_text, envs)
-
-    result_dict = json.loads(result)
-    if 'error' in result_dict:
-        raise HTTPException(status_code=400, detail=result_dict['error'])
-
-    return ApiResponse(result=result, error="", stdout="")
