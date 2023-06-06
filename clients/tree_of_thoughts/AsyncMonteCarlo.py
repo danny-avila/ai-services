@@ -20,12 +20,10 @@ class TreeofThoughts:
         self.history = []  # added line initalize history
 
     def save_tree_to_json(self, file_name):
-        if self.stream_handler:
-            self.stream_handler(json.dumps(self.tree, indent=4))
-        else: 
-            os.makedirs(os.path.dirname(file_name), exist_ok=True)
-            with open(file_name, 'w') as json_file:
-                json.dump(self.tree, json_file, indent=4)
+        self.model.stream_message(json.dumps(self.tree, indent=4))
+        os.makedirs(os.path.dirname(file_name), exist_ok=True)
+        with open(file_name, 'w') as json_file:
+            json.dump(self.tree, json_file, indent=4)
 
     def logNewState(self, state, evaluation):
         if not (type(state) == str):
@@ -134,6 +132,8 @@ class AsyncMonteCarloTreeofThoughts(TreeofThoughts):
                 for thought, value in evaluated_thoughts.items():
                     flattened_state = (state, thought) if isinstance(
                         state, str) else (*state, thought)
+                    
+                    self.logNewState(flattened_state, value)
 
                     if flattened_state not in visit_counts:
                         visit_counts[flattened_state] = 0

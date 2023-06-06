@@ -1,5 +1,6 @@
 # clients\tree_of_thoughts\AsyncOpenAI.py
 import os
+import re
 import openai
 import logging
 import asyncio
@@ -47,6 +48,10 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
         self.strategy = strategy
         self.evaluation_strategy = evaluation_strategy
 
+    def stream_message(self, message):
+        if self.stream_handler:
+            self.stream_handler(message)
+
     async def openai_api_call_handler(self, prompt, max_tokens, temperature, k=1, stop=None):
         while True:
             try:
@@ -76,8 +81,7 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
                 #     log_file.write("\n" + "-----------" +
                 #                    '\n' + "Prompt : " + prompt+"\n")
 
-                if self.stream_handler:
-                    self.stream_handler(f"\n-----------\nPrompt: {prompt}")
+                self.stream_message(f"\n-----------\nPrompt: {prompt}")
                 return response
             except openai.error.RateLimitError as e:
                 sleep_duration = os.environ.get("OPENAI_RATE_TIMEOUT", 30)
@@ -99,8 +103,7 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
                 response = await self.openai_api_call_handler(prompt, 400, 0.5, k)
                 text = self.openai_choice2text_handler(response.choices[0])
                 thoughts += [text]
-                if self.stream_handler:
-                    self.stream_handler(f"\n-----------\nThoughts: {thoughts}")
+                self.stream_message(f"\n-----------\nThoughts: {thoughts}")
                 # print(f'thoughts: {thoughts}')
             return thoughts
 
@@ -171,17 +174,27 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
                     Past solutions:\n\n
                     {state_text}\n       
                     If the solutions is not directly concretely making fast progress in achieving the goal, give it a lower score.
-                    Evaluate all solutions AS A FLOAT BETWEEN 0 and 1:\n,  DO NOT RETURN ANYTHING ELSE
+                    Evaluate all solutions AS A FLOAT BETWEEN 0 and 1:\nDO NOT RETURN ANYTHING ELSE
                 """
 
-                response = await self.openai_api_call_handler(prompt, 10, 1)
+                response = await self.openai_api_call_handler(prompt, 50, 1)
                 try:
                     value_text = self.openai_choice2text_handler(
                         response.choices[0])
                     # print(f'state: {value_text}')
-                    value = float(value_text)
+                    self.stream_message(f"\n-----------\nValue Text: {value_text}")
+                    # value = float(value_text)
+                    matches = re.findall(r'[-+]?[0-9]*\.[0-9]+', value_text)
+                    if matches:
+                        value = float(matches[-1])  # Get the last match
+                        print(f"Evaluated Thought Value: {value}")
+                        self.stream_message(f"\n-----------\nEvaluated Thought Value: {value}")
+                    else:
+                        raise ValueError("No float found in value text")
                     print(f"Evaluated Thought Value: {value}")
+                    self.stream_message(f"\n-----------\nEvaluated Thought Value: {value}")
                 except ValueError:
+                    self.stream_message(f"\n-----------\nValueError, defaulting to 0")
                     value = 0  # Assign a default value if the conversion fails
                 state_values[state] = value
             return state_values
@@ -191,7 +204,7 @@ class AsyncOpenAILanguageModel(AbstractLanguageModel):
 
             prompt = f"Given the following states of reasoning, vote for the best state utilizing an scalar value 1-10:\n{states_text}\n\nVote, on the probability of this state of reasoning achieveing {initial_prompt} and become very pessimistic very NOTHING ELSE"
 
-            response = await self.openai_api_call_handler(prompt, 50, 1)
+            response = await self.openai_api_call_handler(prompt, 100, 1)
 
             print(f'state response: {response}')
 

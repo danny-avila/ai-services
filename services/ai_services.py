@@ -5,7 +5,7 @@ from typing import Dict
 from logger import logger
 from aiohttp import ClientSession
 from .utils.handle_exception import handle_exception
-from clients.tree_of_thoughts import AsyncOpenAILanguageModel, AsyncMonteCarloTreeofThoughts
+from clients.tree_of_thoughts import AsyncOpenAILanguageModel, AsyncMonteCarloTreeofThoughts, GuidanceOpenAILanguageModel
 
 openai.aiosession.set(ClientSession())
 def logger_stream_handler(message):
@@ -53,15 +53,15 @@ async def tree_of_thoughts(input_text: str, envs: Dict[str, str]) -> str:
         # Possible next steps:
         # """
         initial_prompt =  "design a new transportation system for an all-new city"
-        num_thoughts = 1
+        num_thoughts = 5
         max_steps = 3
-        max_states = 4
+        max_states = 5
         pruning_threshold = 0.5
 
         solution = await tree_of_thoughts.solve(
         initial_prompt=initial_prompt,
         num_thoughts=num_thoughts, 
-        max_steps=max_steps, 
+        max_steps=max_steps,
         max_states=max_states, 
         pruning_threshold=pruning_threshold,
         # sleep_time=sleep_time
