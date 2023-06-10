@@ -1,0 +1,730 @@
+components:
+  schemas:
+    ChangeCellTypeRequest:
+      properties:
+        assign_results_to:
+          title: Assign Results To
+          type: string
+        cell_type:
+          enum:
+          - code
+          - markdown
+          - sql
+          title: Cell Type
+          type: string
+        db_connection:
+          title: Db Connection
+          type: string
+      required:
+      - cell_type
+      title: ChangeCellTypeRequest
+      type: object
+    CreateCellRequest:
+      properties:
+        after_cell_id:
+          description: The ID of the cell to insert this one after. If null, it'll
+            be added to the end of the notebook.
+          title: After Cell ID
+          type: string
+        and_run:
+          default: false
+          description: Whether to run the cell after creating it. Only applies to
+            code and sql cells.
+          title: Run Cell
+          type: boolean
+        assign_results_to:
+          description: The variable name to assign SQL query results (as a Dataframe)
+          title: SQL cell results variable name
+          type: string
+        cell_id:
+          title: Cell Id
+          type: string
+        cell_type:
+          default: code
+          description: The type of cell to create.
+          enum:
+          - code
+          - markdown
+          - sql
+          title: Cell Type
+          type: string
+        datasource_id:
+          description: datasource_id to run SQL against if this is a SQL cell
+          title: SQL cell datasource ID
+          type: string
+        source:
+          description: Lines of source code to place in the cell.
+          items:
+            type: string
+          title: Source
+          type: array
+      title: CreateCellRequest
+      type: object
+    CreateNotebookRequest:
+      properties:
+        notebook_name:
+          description: The name of the notebook to create. Must end with .ipynb file
+            extension.
+          title: Notebook Name
+          type: string
+        project_id:
+          description: The ID of the project to create the notebook in.  Will default
+            to the user's default project if not provided.
+          format: uuid
+          title: Project ID
+          type: string
+        start_kernel:
+          default: true
+          description: Whether to start the kernel after creating the notebook.
+          title: Start Kernel
+          type: boolean
+      title: CreateNotebookRequest
+      type: object
+    CreateProjectOptions:
+      properties:
+        description:
+          title: Description
+          type: string
+        git_url:
+          title: Git Url
+          type: string
+        name:
+          title: Name
+          type: string
+      required:
+      - name
+      title: CreateProjectOptions
+      type: object
+    DataSource:
+      properties:
+        description:
+          description: The description of the data source.
+          title: Data Source Description
+          type: string
+        name:
+          description: Name of the data source.
+          title: Data Source Name
+          type: string
+        sql_cell_handle:
+          description: db_connection in the Noteable cell metadata for the database
+          title: db_connection string
+          type: string
+        type_id:
+          description: Type of Data Source
+          title: Type of database
+          type: string
+      required:
+      - name
+      - description
+      - type_id
+      - sql_cell_handle
+      title: DataSource
+      type: object
+    ExecuteCellsRequest:
+      properties:
+        after_id:
+          title: After Id
+          type: string
+        all:
+          title: All
+          type: boolean
+        before_id:
+          title: Before Id
+          type: string
+        ids:
+          items:
+            type: string
+          title: Ids
+          type: array
+      title: ExecuteCellsRequest
+      type: object
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          title: Detail
+          type: array
+      title: HTTPValidationError
+      type: object
+    UpdateCellRequest:
+      properties:
+        and_run:
+          default: false
+          description: Whether to run the cell after updating it. Only applies to
+            code and sql cells.
+          title: Run Cell
+          type: boolean
+        source:
+          default: []
+          description: Lines of source code to replace the cell with.
+          items:
+            type: string
+          title: Source
+          type: array
+      title: UpdateCellRequest
+      type: object
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          title: Location
+          type: array
+        msg:
+          title: Message
+          type: string
+        type:
+          title: Error Type
+          type: string
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+      type: object
+  securitySchemes:
+    HTTPBearer:
+      scheme: bearer
+      type: http
+info:
+  description: ChatGPT Plugin server for creating computational notebooks (in Python!),
+    allowing you to execute code, explore data, and visualize results.
+  title: Origamist
+  version: 0.25.1
+openapi: 3.0.2
+paths:
+  /api/origami/f/:
+    post:
+      description: Creates a new notebook. If no project ID is provided, the user's
+        default project will be used.
+      operationId: create_notebook
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateNotebookRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Create Notebook
+  /api/origami/f/{file_id}:
+    get:
+      description: 'Get a summary of a notebook. This includes the list of cell IDs
+        that make up
+
+        the notebook document, the current kernel state, and the notebook''s name.'
+      operationId: get_notebook
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      responses:
+        '200':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Notebook
+  /api/origami/f/{file_id}/c:
+    post:
+      description: Create a code or markdown cell.
+      operationId: create_cell
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCellRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                title: Response Create Cell
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Create Cell
+  /api/origami/f/{file_id}/c/{cell_id}:
+    get:
+      description: Return Cell model details
+      operationId: get_cell
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      - in: path
+        name: cell_id
+        required: true
+        schema:
+          title: Cell Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                title: Response Get Cell
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Cell
+    post:
+      description: 'Endpoint to allow updating the type of a cell. Currently only
+        supports changing
+
+        between Code, Markdown, and SQL cells.'
+      operationId: change_cell_type
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      - in: path
+        name: cell_id
+        required: true
+        schema:
+          title: Cell Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeCellTypeRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Change Cell Type
+    put:
+      description: Replace the source code of a cell.
+      operationId: update_cell
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      - in: path
+        name: cell_id
+        required: true
+        schema:
+          title: Cell Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCellRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Update Cell
+  /api/origami/f/{file_id}/c/{cell_id}/run:
+    post:
+      description: Run a Cell within a Notebook by ID.
+      operationId: run_cell
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      - in: path
+        name: cell_id
+        required: true
+        schema:
+          title: Cell Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Run Cell
+  /api/origami/f/{file_id}/datasources:
+    get:
+      description: Get the databases for a notebook.
+      operationId: get_datasources
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/DataSource'
+                title: Response Get Datasources
+                type: array
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Datasources
+  /api/origami/f/{file_id}/kernel:
+    delete:
+      description: Shutdown the kernel for a notebook.
+      operationId: shutdown_kernel_from_file
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Shutdown Kernel From File
+  /api/origami/f/{file_id}/run_multiple_cells:
+    post:
+      description: Execute multiple cells in a Notebook.
+      operationId: run_multiple_cells
+      parameters:
+      - in: path
+        name: file_id
+        required: true
+        schema:
+          format: uuid
+          title: File Id
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExecuteCellsRequest'
+        required: true
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Run Multiple Cells
+  /api/origami/k/:
+    get:
+      description: Returns a list of the user's active kernel sessions.
+      operationId: get_active_kernel_sessions
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      security:
+      - HTTPBearer: []
+      summary: Get Active Kernel Sessions
+  /api/origami/k/{kernel_session_id}:
+    delete:
+      description: Shutdown the kernel for a notebook.
+      operationId: shutdown_kernel
+      parameters:
+      - in: path
+        name: kernel_session_id
+        required: true
+        schema:
+          format: uuid
+          title: Kernel Session Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Shutdown Kernel
+  /api/origami/p/:
+    post:
+      description: 'Create a new Project for the user in their default Space. Projects
+        can be optionally created
+
+        from a git repository, in which case users can sync changes from the Noteable
+        UI. Private repos
+
+        can be created from the Noteable UI but'
+      operationId: create_project
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectOptions'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Create New Project
+  /api/origami/p/default:
+    delete:
+      description: Clear the user's default project.
+      operationId: clear_default_project
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                title: Response Clear Default Project
+                type: object
+          description: Successful Response
+      security:
+      - HTTPBearer: []
+      summary: Delete Default Project
+    get:
+      description: Get the user's configured default project.
+      operationId: get_default_project
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      security:
+      - HTTPBearer: []
+      summary: Get Default Project
+    put:
+      description: Configure the user's default project (by UUID) for new notebooks.
+      operationId: set_default_project
+      parameters:
+      - in: query
+        name: new_default_project_id
+        required: true
+        schema:
+          format: uuid
+          title: New Default Project Id
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                title: Response Set Default Project
+                type: object
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Set Default Project
+  /api/origami/p/{project_id}/files:
+    get:
+      description: Get a list of files in the project.
+      operationId: get_project_files
+      parameters:
+      - in: path
+        name: project_id
+        required: true
+        schema:
+          format: uuid
+          title: Project Id
+          type: string
+      - in: query
+        name: filename_contains
+        required: false
+        schema:
+          default: ''
+          title: Filename Contains
+          type: string
+      - in: query
+        name: file_limit
+        required: false
+        schema:
+          default: 20
+          title: File Limit
+          type: integer
+      - in: query
+        name: sort_by
+        required: false
+        schema:
+          default: updated_at
+          title: Sort By
+          type: string
+      - in: query
+        name: sort_order
+        required: false
+        schema:
+          default: descending
+          enum:
+          - ascending
+          - descending
+          title: Sort Order
+          type: string
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+          description: Validation Error
+      security:
+      - HTTPBearer: []
+      summary: Get Project Files
+  /api/origami/s/default:
+    get:
+      description: Get the user's configured default Space for creating new Projects
+        in.
+      operationId: get_default_space
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      security:
+      - HTTPBearer: []
+      summary: Get Default Space
+  /api/origami/u/me:
+    get:
+      description: "Get details of the Plugin user's Noteable account information.\n\
+        \ - useful when debugging permissions issues"
+      operationId: get_user_info
+      responses:
+        '200':
+          content:
+            application/json:
+              schema: {}
+          description: Successful Response
+      security:
+      - HTTPBearer: []
+      summary: Get User Info
+servers:
+- description: Origamist server on https://chat.noteable.io
+  url: https://chat.noteable.io

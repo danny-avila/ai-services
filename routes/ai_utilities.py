@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Dict
-from services.ai_services import AI_SERVICES, load_plugins
+from services.ai_services import AI_SERVICES
 from middlewares.authentication import authenticate
 
 ai_utilities_router = APIRouter()
@@ -47,13 +47,13 @@ async def ask(payload: RequestPayload, token: str = Depends(authenticate)):
 
     return ApiResponse(result=result, error="", stdout=stdout)
 
-@ai_utilities_router.get("/plugins", response_model=ApiResponse)
-async def plugins(token: str = Depends(authenticate)):
-    try:
-        result = await load_plugins()
-        result, stdout = process_result(result)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+# @ai_utilities_router.get("/plugins", response_model=ApiResponse)
+# async def plugins(token: str = Depends(authenticate)):
+#     try:
+#         result = await load_plugins()
+#         result, stdout = process_result(result)
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=str(e))
 
-    return ApiResponse(result=result, error="", stdout=stdout)
+#     return ApiResponse(result=result, error="", stdout=stdout)
 
