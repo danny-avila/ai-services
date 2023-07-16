@@ -1,20 +1,27 @@
-from langchain.llms import OpenAI
+from langchain.chat_models import ChatOpenAI
+# from langchain.llms import OpenAI
 from langchain.agents import AgentType, initialize_agent
 from langchain.agents.agent_toolkits import NLAToolkit
 from langchain.requests import Requests
 from langchain.tools.plugin import AIPlugin
 
 AI_PLUGINS = {
-    "noteable": "https://chat.noteable.io/.well-known/ai-plugin.json"
+    "ai_agents": "https://ai-agents-plugin.vercel.app/.well-known/ai-plugin.json",
+    "penrose": "https://www.aperiodic.io/.well-known/ai-plugin.json"
 }
 
 def get_nla_agent(openai_api_key, model_name, plugin_name, plugin_api_key):
-    llm=OpenAI(openai_api_key=openai_api_key, model_name=model_name, temperature=0)
+    llm=ChatOpenAI(openai_api_key=openai_api_key, model_name=model_name, temperature=0)
+    # llm=OpenAI(openai_api_key=openai_api_key, model_name=model_name, temperature=0)
     plugin=AIPlugin.from_url(AI_PLUGINS[plugin_name])
-    requests = Requests(headers={"Authorization": f"Bearer {plugin_api_key}"})
-    toolkit = NLAToolkit.from_llm_and_ai_plugin(llm, plugin, requests=requests)
+    # requests = Requests(headers={"Authorization": f"Bearer {plugin_api_key}"})
+    # toolkit = NLAToolkit.from_llm_and_ai_plugin(llm, plugin, requests=requests)
+    toolkit = NLAToolkit.from_llm_and_ai_plugin(llm, plugin)
 
-    # Slightly tweak the instructions from the default agent
+    # tools = toolkit.get_tools()
+    # agent = initialize_agent(tools, llm, agent=AgentType.OPENAI_FUNCTIONS, 
+    #                     verbose=True)
+
     openapi_format_instructions = """Use the following format:
 
     Question: the input question you must answer
