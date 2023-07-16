@@ -12,3 +12,4 @@ async def api_chain(input_text: str, envs: Dict[str, str]) -> str:
         return response
     except Exception as e:
         handle_exception(e, "api_chain")
+        return "" # return empty string if an exception is caught

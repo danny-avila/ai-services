@@ -12,3 +12,4 @@ async def api_agent(input_text: str, envs: Dict[str, str]) -> str:
         return response
     except Exception as e:
         handle_exception(e, "api_agent")
+        return ""
